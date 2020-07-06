@@ -48,9 +48,10 @@ def build_and_send_msg(data, key, label):
     if  data != 'ERROR':
         #print data
         #print (data[key])
-        if data[key] is not None:
-           msg = build_msg('"'+label+'":'+str(data[key]))
-           send_msg(msg)
+	if data is not None:
+       	   if data[key] is not None:
+              msg = build_msg('"'+label+'":'+str(data[key]))
+              send_msg(msg)
    
 def convertPressure( data, key ):
     if data != 'ERROR' :
