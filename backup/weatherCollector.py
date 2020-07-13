@@ -45,39 +45,46 @@ def send_msg(value):
     client.disconnect()
 
 def build_and_send_msg(data, key, label):
+    # print('#{}#{}'.format(data,key))
     if  data != 'ERROR':
-        #print data
-        #print (data[key])
-	if data is not None:
-       	   if data[key] is not None:
-              msg = build_msg('"'+label+'":'+str(data[key]))
+	if data:
+	   value = data[key]
+       	   if value is not None:
+              msg = build_msg('"'+label+'":'+str(value))
               send_msg(msg)
+	   else:
+		print('In build and send msg {} caused issue on key {}'.format(data, key));
+	else:
+	    print('In build and send msg {} caused issue'.format(data));
    
 def convertPressure( data, key ):
     if data != 'ERROR' :
-        if data[key] is not None:
-           #print (data[key])
-           value = data[key] * 0.00029529983071445
-           data[key] = value
-           #print (data[key])
+	value = data[key]
+        if value is not None:
+           calc = data[key] * 0.00029529983071445
+           data[key] = calc
+        else:
+	   print('In convertPressure {} caused issue on key {}'.format(data, key));
         return data
 
 def convertTemperature( data, key ):
     if data != 'ERROR' :
-        if data[key] is not None:
-            #print (data[key])
-            value = ( data[key] * 9/5) + 32
-            data[key] = value
-            #print (data[key])
+	value = data[key]
+        if value is not None:
+            calc = ( value * 9/5) + 32
+            data[key] = calc
+	else:
+	    print('In convertTemp {} caused issue on key {}'.format(data, key));
         return data
 
 def convertMetersToFeet( data, key ):
     if data != 'ERROR' :
-        if data[key] is not None:
-            #print (data[key])
-            value = data[key] * 3.2808
-            data[key] = value
-            #print (data[key])
+	value = data[key]
+        if value is not None:
+            calc = value * 3.2808
+            data[key] = calc
+	else:
+	    print('In converMetersToFeet {} caused issue on key {}'.format(data, key));
         return data
 
 # Here's where we poll and gather data.
