@@ -254,7 +254,6 @@ class Pi_WeatherRack:
 	# Utility methods
 
 	def reset_rain_total(self):
-		Pi_WeatherRack._currentRainCount = 0;
 		Pi_WeatherRack._currentRainTotal = 0.0;
 
 	def accessInternalCurrentWindDirection(self):

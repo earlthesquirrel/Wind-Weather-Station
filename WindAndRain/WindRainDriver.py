@@ -24,8 +24,13 @@ import RPi.GPIO as GPIO
 
 sys.path.append('./Adafruit_Python_GPIO')
 sys.path.append('./SDL_Pi_TCA9545')
+sys.path.append('../')
 
 import Pi_WeatherRack as Pi_WeatherRack
+from mqttREST import mqttREST
+
+messenger = mqttREST("power", "nD3M$3AhDob2K+xhAE", 1883)
+
 
 import SDL_Pi_TCA9545
 #/*=========================================================================
@@ -79,7 +84,7 @@ def returnStatusLine(device, state):
 # GPIO Numbering Mode GPIO.BCM
 #
 
-anemometerPin = 26
+anemometerPin = 6
 rainPin = 4
 
 # constants
@@ -127,19 +132,35 @@ while True:
 	#
 	print "----------------- "
 
- 	currentWindSpeed = weatherStation.current_wind_speed()/1.6
-  	currentWindGust = weatherStation.get_wind_gust()/1.6
-  	print("Wind Speed=\t%0.2f MPH")%(currentWindSpeed)
+ 	windSpeed = weatherStation.current_wind_speed()/1.6
+  	windGust = weatherStation.get_wind_gust()/1.6
+	currentWindSpeed = "%0.2f" % windSpeed
+	currentWindGust = "%0.2f" % windGust
 
-    	print("MPH wind_gust=\t%0.2f MPH")%(currentWindGust)
+  	print "Wind Speed=\t" + currentWindSpeed + " MPH"
+    	print "MPH wind_gust=\t" + currentWindGust + " MPH"
+
   	if (weatherStation.ADS1015_Present or weatherStation.ADS1115_Present):	
-		print "Wind Direction=\t\t\t %0.2f Degrees" % weatherStation.current_wind_direction()
-		print "Wind Direction Voltage=\t\t %0.3f V" % weatherStation.current_wind_direction_voltage()
+		currentWindDirection = "%0.2f" % weatherStation.current_wind_direction()
+		print "Wind Direction=\t\t\t"+ currentWindDirection
+		#print "Wind Direction=\t\t\t %0.2f Degrees" % weatherStation.current_wind_direction()
+		#print "Wind Direction Voltage=\t\t %0.3f V" % weatherStation.current_wind_direction_voltage()
 
 	print "----------------- "
 
-	totalRain = weatherStation.get_current_rain_total();
-        print("Rain Total=\t%0.2f in")%(totalRain)
+	rain = weatherStation.get_current_rain_total();
+	totalRain = "%0.2f" % rain
+        print("Rain Total=\t"+totalRain+" in");
+
+
+ 	epoch_time = int (time.time())
+        message = '{"dateTime":'+str(epoch_time)+', "rain":'+totalRain+', "windDir":'+currentWindDirection+', "windSpeed": '+ currentWindSpeed+', "windGust": '+ currentWindGust+', "windGustDir":'+currentWindDirection+' }'
+	print message
+
+	messenger.send_msg(message)
+
+	weatherStation.reset_rain_total()
+
 
 	print "----------------- "
 
