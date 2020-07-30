@@ -56,12 +56,16 @@ class mqttREST:
 
         broker_address= "172.16.0.4"
 
-        self._client = mqttClient.Client("Python")               # create new instance
-        self._client.username_pw_set(self._user, self._password)    # set username and password
-        self._client.on_connect= self.on_connect                 # attach function to callback
-        self._client.connect(broker_address, self._port)          # connect to broker
-        self._client.publish("weather",value)
-        self._client.disconnect()
+	try:   
+            self._client = mqttClient.Client("Python")               # create new instance
+            self._client.username_pw_set(self._user, self._password)    # set username and password
+            self._client.on_connect= self.on_connect                 # attach function to callback
+            self._client.connect(broker_address, self._port)          # connect to broker
+            self._client.publish("weather",value)
+            self._client.disconnect()
+	except socket.timeout
+	    print "Got socket timeout, continuing..."
+	    print "Data was " + value;
 
 
 
