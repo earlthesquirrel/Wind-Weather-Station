@@ -2,6 +2,8 @@ import requests
 import paho.mqtt.client as mqttClient
 import time
 import json
+import socket
+from socket import AF_INET, SOCK_DGRAM
 
 class mqttREST:
 
@@ -63,7 +65,7 @@ class mqttREST:
             self._client.connect(broker_address, self._port)          # connect to broker
             self._client.publish("weather",value)
             self._client.disconnect()
-	except socket.timeout
+	except socket.timeout:
 	    print "Got socket timeout, continuing..."
 	    print "Data was " + value;
 
