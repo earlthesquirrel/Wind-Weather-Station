@@ -3,5 +3,5 @@
 while :
 do
    python weatherCollector2.py
-   sleep 30s
+   sleep 20s
 done

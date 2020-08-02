@@ -21,18 +21,21 @@ class mqttREST:
 
     def wioRESTcall(self, url):
 
-       r = requests.get(url)
+	try: 
+       		r = requests.get(url)
 
-       #print(r.status_code)
-       #print(r.json())
+       		#print(r.status_code)
+       		#print(r.json())
 
-       # return (str.replace(str(r.json()),"u'","'"))
-
-       if  r.status_code == 200 :
-          return r.json()
-       else:
-          return "ERROR" 
-
+       		# return (str.replace(str(r.json()),"u'","'"))
+		
+       		if  r.status_code == 200 :
+          		return r.json()
+       		else:
+          		return "ERROR" 
+	except requests.exceptions.ConnectionError:
+		print "Connection Error"
+		return "ERROR"
 
     def on_connect(self, client, userdata, flags, rc):
  
