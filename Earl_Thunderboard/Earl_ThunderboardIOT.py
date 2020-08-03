@@ -252,7 +252,7 @@ if __name__ == '__main__':
 	scheduler.add_job(blinkLED, 'interval', seconds=5, args=[1,0.250])
 
 	# publish the Update 
-	scheduler.add_job(mqttPublish, 'interval', seconds=120)
+	scheduler.add_job(mqttPublish, 'interval', seconds=60)
 
 	# check configuration
 	scheduler.add_job(readLightningStatus, 'interval', seconds=1800)
