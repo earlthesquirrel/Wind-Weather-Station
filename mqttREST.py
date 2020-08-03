@@ -68,6 +68,9 @@ class mqttREST:
 	except socket.timeout:
 	    print "Got socket timeout, continuing..."
 	    print "Data was " + value;
+	except socket.error:
+	    print "Got socket error, continuing..."
+	    print "Data was " + value;
 
 
 
