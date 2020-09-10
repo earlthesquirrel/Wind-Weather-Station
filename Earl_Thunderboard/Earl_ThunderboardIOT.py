@@ -15,7 +15,10 @@ import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 import apscheduler.events
 import LightningData
+ 
+from mqttREST import mqttREST
 
+messenger = mqttREST("power", "nD3M$3AhDob2K+xhAE", 1883)
 
 try:
 	import conflocal as config
@@ -214,6 +217,11 @@ def mqttPublish():
 	myMessage = { "SoftwareVersion": VERSIONNUMBER, "LastInterruptResult": LightningData.LastInterruptResult, "LastResult": LightningData.LastResult, "LastLightningResult": LightningData.LastLightningResult, "LightningTimeStamp": LightningData.LightningTimeStamp, "LightningCount": LightningData.LightningCount, "InterruptCount": LightningData.InterruptCount, "LastDistance":LightningData.LastDistance, "Noise_Floor": LightningData.Noise_Floor, "IndoorSet": LightningData.IndoorSet, "Display_LCO": LightningData.Display_LCO, "Minimum_Strikes": LightningData.Minimum_Strikes, "Mask_Disturber": LightningData.Mask_Disturber, "InterruptTimeStamp": LightningData.InterruptTimeStamp, "LastPublishTimeStamp": LightningData.LastPublishTimeStamp }
 	print myMessage
 
+	epoch_time = int (time.time())
+	mqttMsg = '{"dateTime":'+str(epoch_time)+', "lightning_distance":'+ LightningData.LightningDistance+', "lightning_disturber_count": '+ LightningData.LightnignDisturberCount+', "lightning_energy": '+LightningData.LightningEnergy+', "lightning_noise_count": '+ LightningData.LightningNoiseCount+', "lightning_strike_count": '+ LightningData.StrikeCount+' }'
+	print mqttMsg
+
+	messenger.send_msg(mqttMsg)
 
 
 def ap_my_listener(event):
@@ -274,16 +282,18 @@ if __name__ == '__main__':
                 while True:
             		time.sleep(1)
 
+LightningEnergy = 0.0
 
 			# display lightning on LCD
 			if (LightningData.InterruptActive == True):
-				if (LightningData.LastInterruptResult == 0x08):
-		
-							
-					displayLightning()
-						
-					# beep user
 
+				if (LightningData.LastInterruptResult == 0x08):
+					displayLightning() 
+
+					LightningData.LightnignStrikeCount++
+					LightningData.LightingDistance = LightnignData.LastDistance
+
+					# beep user
 					if (LightningData.LastDistance <=1):
 						buzzUser(3, 0.2)
 					elif (LightningData.LastDistance < 15):
@@ -291,25 +301,27 @@ if __name__ == '__main__':
 					else:
 						buzzUser(1, 0.2)
 						
-
-
-					publishLightningToPubNub()
+					publishLightningMQTT()
 					LightningData.InterruptActive = False
 					time.sleep(1)
 
 				elif (LightningData.LastInterruptResult == 0x04):
 
+					LightningData.LightingDisturberCount++
+
 					print "Disturber Found"
 					displayDisturber()
-					publishLightningToPubNub()
+					publishLightningMQTT()
 					LightningData.InterruptActive = False
 					time.sleep(1)
 
 				elif (LightningData.LastInterruptResult == 0x01):
 
+					LightningData.NoiseCount++
+
 					print "Noise Found "
 					displayNoise()
-					publishLightningToPubNub()
+					publishLightningMQTT()
 					LightningData.InterruptActive = False
 					time.sleep(1)
 

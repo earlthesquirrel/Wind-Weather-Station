@@ -17,16 +17,35 @@ messenger.build_and_send_msg(altitudeBME, 'altitude', 'altimeter')
 tempBME_URL = 'https://us.wio.seeed.io/v1/node/GroveBME280I2C1/temperature?access_token=6b6b1b39ebd90be742a1f2d285788c01'
 tempBME = messenger.wioRESTcall(tempBME_URL)
 tempBME = messenger.convertTemperature(tempBME, 'temperature')
-messenger.build_and_send_msg(tempBME, 'temperature', 'outTemp')
+if tempBME != 8888 and tempBME != 9999:
+     	# messenger.build_and_send_msg(tempBME, 'temperature', 'outTemp')
+     	messenger.build_and_send_msg(tempBME, 'temperature', 'extraTemp1')
+else:
+	print("TempBME read error", tempBME)
 
 humidityBME_URL = 'https://us.wio.seeed.io/v1/node/GroveBME280I2C1/humidity?access_token=6b6b1b39ebd90be742a1f2d285788c01'
 humidityBME = messenger.wioRESTcall(humidityBME_URL)
-messenger.build_and_send_msg(humidityBME, 'humidity', 'outHumidity')
+#messenger.build_and_send_msg(humidityBME, 'humidity', 'outHumidity')
+messenger.build_and_send_msg(humidityBME, 'humidity', 'extraHumid1')
 
 pressureBME_URL = 'https://us.wio.seeed.io/v1/node/GroveBME280I2C1/pressure?access_token=6b6b1b39ebd90be742a1f2d285788c01'
 pressureBME = messenger.wioRESTcall(pressureBME_URL)
 pressureBME = messenger.convertPressure(pressureBME, 'pressure')
 messenger.build_and_send_msg(pressureBME, 'pressure', 'barometer')
+
+humiditySHT_URL = 'https://us.wio.seeed.io/v1/node/GroveTempHumiSHT31I2C0/humidity?access_token=d5c417d04b21aaa4683c0f99c711532a'
+humiditySHT = messenger.wioRESTcall(humiditySHT_URL)
+#messenger.build_and_send_msg(humiditySHT, 'humidity', 'extraHumid1')
+messenger.build_and_send_msg(humiditySHT, 'humidity', 'outHumidity')
+
+tempSHT_URL = 'https://us.wio.seeed.io/v1/node/GroveTempHumiSHT31I2C0/temperature?access_token=d5c417d04b21aaa4683c0f99c711532a'
+tempSHT = messenger.wioRESTcall(tempSHT_URL)
+tempSHT = messenger.convertTemperature(tempSHT, 'temperature')
+if tempSHT != 8888 and tempSHT != 9999:
+	# messenger.build_and_send_msg(tempSHT, 'temperature', 'extraTemp1')
+	messenger.build_and_send_msg(tempSHT, 'temperature', 'outTemp')
+else:
+	print("TempSHT read error", tempSHT)
 
 dust_URL = 'https://us.wio.seeed.io/v1/node/GroveDustD1/dust?access_token=da61a02b1808e7c4bd2965b75d4ca863'
 dust = messenger.wioRESTcall(dust_URL)
@@ -64,12 +83,7 @@ NO2_URL = 'https://us.wio.seeed.io/v1/node/GroveMultiChannelGasI2C0/NO2?access_t
 NO2 = messenger.wioRESTcall(NO2_URL)
 messenger.build_and_send_msg(NO2, 'concentration_ppm', 'no2')
 
-humiditySHT_URL = 'https://us.wio.seeed.io/v1/node/GroveTempHumiSHT31I2C0/humidity?access_token=d5c417d04b21aaa4683c0f99c711532a'
-humiditySHT = messenger.wioRESTcall(humiditySHT_URL)
-messenger.build_and_send_msg(humiditySHT, 'humidity', 'extraHumid1')
-
-tempSHT_URL = 'https://us.wio.seeed.io/v1/node/GroveTempHumiSHT31I2C0/temperature?access_token=d5c417d04b21aaa4683c0f99c711532a'
-tempSHT = messenger.wioRESTcall(tempSHT_URL)
-tempSHT = messenger.convertTemperature(tempSHT, 'temperature')
-messenger.build_and_send_msg(tempSHT, 'temperature', 'extraTemp1')
+CO2_URL = 'https://us.wio.seeed.io/v1/node/GroveCo2MhZ16UART0/concentration?access_token=6b6b1b39ebd90be742a1f2d285788c01'
+CO2 = messenger.wioRESTcall(CO2_URL)
+messenger.build_and_send_msg(CO2, 'concentration', 'co2')
 

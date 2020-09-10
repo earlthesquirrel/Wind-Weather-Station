@@ -102,13 +102,18 @@ class mqttREST:
     
     def convertTemperature( self, data, key ):
         if data != 'ERROR' :
-	    value = data[key]
-            if value is not None:
-                calc = ( value * 9/5) + 32
-                data[key] = calc
-	    else:
-	        print('In convertTemp {} caused issue on key {}'.format(data, key));
-            return data
+	   if data:
+	     value = data[key]
+             if value is not None:
+                 calc = ( value * 9/5) + 32
+                 data[key] = calc
+	     else:
+	         print('In convertTemp {} caused issue on key {}'.format(data, key));
+		 data = 9999
+           else:
+	       print('In convertTemp data error');
+               data = 8888
+           return data
 
     def convertMetersToFeet( self, data, key ):
         if data != 'ERROR' :
@@ -119,4 +124,3 @@ class mqttREST:
 	    else:
 	        print('In converMetersToFeet {} caused issue on key {}'.format(data, key));
             return data
- 
