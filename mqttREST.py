@@ -75,8 +75,6 @@ class mqttREST:
 	    print "Got socket error, continuing..."
 	    print "Data was " + value;
 
-
-
     def build_and_send_msg(self, data, key, label):
 
         if  data != 'ERROR':
@@ -89,6 +87,25 @@ class mqttREST:
 		    print('In build and send msg {} caused issue on key {}'.format(data, key));
 	    else:
 	        print('In build and send msg {} caused issue'.format(data));
+
+
+    def build_and_send_msg_with_data(self, value, label):
+
+       	    if value is not None:
+                  msg = self.build_msg('"'+label+'":'+str(value))
+                  self.send_msg(msg)
+	    else:
+	        print('In build and send msg {} caused issue'.format(value));
+
+    def getValue( self, data, key ):
+        if data != 'ERROR' :
+	    value = data[key]
+            if value is not None:
+               return float(data[key])
+            else:
+	       print('In getValue {} caused issue on key {}'.format(data, key));
+	    return 0.0
+    
        
     def convertPressure( self, data, key ):
         if data != 'ERROR' :
