@@ -77,16 +77,20 @@ class mqttREST:
 
     def build_and_send_msg(self, data, key, label):
 
-        if  data != 'ERROR':
-	    if data:
-	       value = data[key]
-       	       if value is not None:
-                  msg = self.build_msg('"'+label+'":'+str(value))
-                  self.send_msg(msg)
-	       else:
-		    print('In build and send msg {} caused issue on key {}'.format(data, key));
-	    else:
-	        print('In build and send msg {} caused issue'.format(data));
+	try:
+            if  data != 'ERROR':
+	        if data:
+	           value = data[key]
+       	           if value is not None:
+                      msg = self.build_msg('"'+label+'":'+str(value))
+                      self.send_msg(msg)
+	           else:
+		        print('In build and send msg {} caused issue on key {}'.format(data, key));
+	        else:
+	            print('In build and send msg {} caused issue'.format(data));
+	except KeyError:
+		print('Missing key {}'.format(key));
+		print('In data. {} '.format(data));
 
 
     def build_and_send_msg_with_data(self, value, label):
