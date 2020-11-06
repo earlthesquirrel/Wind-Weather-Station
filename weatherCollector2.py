@@ -33,7 +33,6 @@ pressureBME_URL = 'https://us.wio.seeed.io/v1/node/GroveBME280I2C1/pressure?acce
 pressureBME = messenger.wioRESTcall(pressureBME_URL)
 pressureB = messenger.getValue(pressureBME, 'pressure')
 pressureBME = messenger.convertPressure(pressureBME, 'pressure')
-messenger.build_and_send_msg(pressureBME, 'pressure', 'pressure')
 
 try:
 	# Here we calculate barometric pressure -- which is pressure corrected to sea level
