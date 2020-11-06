@@ -31,3 +31,4 @@ LightningDisturberCount = 0
 LightningEnergy = 0.0
 LightningNoiseCount = 0
 LightningStrikeCount = 0
+Energy = 0

@@ -16,6 +16,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import apscheduler.events
 import LightningData
  
+import paho.mqtt.client as mqttClient
+import json
+
+sys.path.append('../')
 from mqttREST import mqttREST
 
 messenger = mqttREST("power", "nD3M$3AhDob2K+xhAE", 1883)
@@ -177,11 +181,13 @@ def handle_interrupt(channel):
 	LightningData.LightningCount = LightningData.LightningCount +1
 	tuple = time.tzname
 	LightningData.LightningTimeStamp = now + " " + tuple[0] 
+	LightningData.Energy = sensor.get_energy()
         distance = sensor.get_distance()
 	LightningData.LastDistance = distance
 	LightningData.LastResult = "Lightning! " +str(distance) + "km away."
 	LightningData.LastLightningResult = "Lightning! " +str(distance) + "km away."
 	print LightningData.LastResult + LightningData.LightningTimeStamp
+	mqttPublish(reason)
     
     LightningData.InterruptActive = True
 
@@ -212,10 +218,32 @@ def blinkLED(times,length):
 		GPIO.output(LED, 0)
 		time.sleep(length)
 
-def mqttPublish():
+def mqttPublish(reason):
 
-	myMessage = { "SoftwareVersion": VERSIONNUMBER, "LastInterruptResult": LightningData.LastInterruptResult, "LastResult": LightningData.LastResult, "LastLightningResult": LightningData.LastLightningResult, "LightningTimeStamp": LightningData.LightningTimeStamp, "LightningCount": LightningData.LightningCount, "InterruptCount": LightningData.InterruptCount, "LastDistance":LightningData.LastDistance, "Noise_Floor": LightningData.Noise_Floor, "IndoorSet": LightningData.IndoorSet, "Display_LCO": LightningData.Display_LCO, "Minimum_Strikes": LightningData.Minimum_Strikes, "Mask_Disturber": LightningData.Mask_Disturber, "InterruptTimeStamp": LightningData.InterruptTimeStamp, "LastPublishTimeStamp": LightningData.LastPublishTimeStamp }
-	print myMessage
+        print('Publishing Data to MQTT')
+
+# 	myMessage = { "SoftwareVersion": VERSIONNUMBER, "LastInterruptResult": LightningData.LastInterruptResult, "LastResult": LightningData.LastResult, "LastLightningResult": LightningData.LastLightningResult, "LightningTimeStamp": LightningData.LightningTimeStamp, "LightningCount": LightningData.LightningCount, "InterruptCount": LightningData.InterruptCount, "LastDistance":LightningData.LastDistance, "Energy": LightningData.Energy, "Noise_Floor": LightningData.Noise_Floor, "IndoorSet": LightningData.IndoorSet, "Display_LCO": LightningData.Display_LCO, "Minimum_Strikes": LightningData.Minimum_Strikes, "Mask_Disturber": LightningData.Mask_Disturber, "InterruptTimeStamp": LightningData.InterruptTimeStamp, "LastPublishTimeStamp": LightningData.LastPublishTimeStamp }
+#	print myMessage
+
+        # Call publish here.
+
+	if (reason == 0x08):
+        	message = '{"dateTime":'+LightningData.LightningTimeStamp+', "lightning_distance":'+LightningData.LastDistance+', "lightning_energy": '+ LightningData.Energy' }'
+	# if (reason == 0x04):
+	#	message = '{"dateTime":'+now+', "lightning_disturber":'1' }'
+
+	# if (reason == 0x01):
+	#	message = '{"dateTime":'+now+', "lightning_noise":'1' }'
+
+	print message
+
+	messenger.send_msg(message)
+
+# 'lightning_distance',        'REAL' 
+# 'lightning_disturber_count', 'REAL' 
+# 'lightning_energy',          'REAL' 
+# 'lightning_noise_count',     'REAL' 
+# 'lightning_strike_count',    'REAL' 
 
 	epoch_time = int (time.time())
 	mqttMsg = '{"dateTime":'+str(epoch_time)+', "lightning_distance":'+ LightningData.LightningDistance+', "lightning_disturber_count": '+ LightningData.LightnignDisturberCount+', "lightning_energy": '+LightningData.LightningEnergy+', "lightning_noise_count": '+ LightningData.LightningNoiseCount+', "lightning_strike_count": '+ LightningData.StrikeCount+' }'
@@ -259,9 +287,6 @@ if __name__ == '__main__':
     	# blink life light
 	scheduler.add_job(blinkLED, 'interval', seconds=5, args=[1,0.250])
 
-	# publish the Update 
-	scheduler.add_job(mqttPublish, 'interval', seconds=60)
-
 	# check configuration
 	scheduler.add_job(readLightningStatus, 'interval', seconds=1800)
 
@@ -301,7 +326,6 @@ LightningEnergy = 0.0
 					else:
 						buzzUser(1, 0.2)
 						
-					publishLightningMQTT()
 					LightningData.InterruptActive = False
 					time.sleep(1)
 
@@ -311,7 +335,6 @@ LightningEnergy = 0.0
 
 					print "Disturber Found"
 					displayDisturber()
-					publishLightningMQTT()
 					LightningData.InterruptActive = False
 					time.sleep(1)
 
@@ -321,7 +344,6 @@ LightningEnergy = 0.0
 
 					print "Noise Found "
 					displayNoise()
-					publishLightningMQTT()
 					LightningData.InterruptActive = False
 					time.sleep(1)
 
