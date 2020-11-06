@@ -181,7 +181,7 @@ def handle_interrupt(channel):
 	LightningData.LightningCount = LightningData.LightningCount +1
 	tuple = time.tzname
 	LightningData.LightningTimeStamp = now + " " + tuple[0] 
-	LightningData.Energy = sensor.get_energy()
+	LightningData.LightningEnergy = sensor.get_energy()
         distance = sensor.get_distance()
 	LightningData.LastDistance = distance
 	LightningData.LastResult = "Lightning! " +str(distance) + "km away."
@@ -222,13 +222,13 @@ def mqttPublish(reason):
 
         print('Publishing Data to MQTT')
 
-# 	myMessage = { "SoftwareVersion": VERSIONNUMBER, "LastInterruptResult": LightningData.LastInterruptResult, "LastResult": LightningData.LastResult, "LastLightningResult": LightningData.LastLightningResult, "LightningTimeStamp": LightningData.LightningTimeStamp, "LightningCount": LightningData.LightningCount, "InterruptCount": LightningData.InterruptCount, "LastDistance":LightningData.LastDistance, "Energy": LightningData.Energy, "Noise_Floor": LightningData.Noise_Floor, "IndoorSet": LightningData.IndoorSet, "Display_LCO": LightningData.Display_LCO, "Minimum_Strikes": LightningData.Minimum_Strikes, "Mask_Disturber": LightningData.Mask_Disturber, "InterruptTimeStamp": LightningData.InterruptTimeStamp, "LastPublishTimeStamp": LightningData.LastPublishTimeStamp }
+# 	myMessage = { "SoftwareVersion": VERSIONNUMBER, "LastInterruptResult": LightningData.LastInterruptResult, "LastResult": LightningData.LastResult, "LastLightningResult": LightningData.LastLightningResult, "LightningTimeStamp": LightningData.LightningTimeStamp, "LightningCount": LightningData.LightningCount, "InterruptCount": LightningData.InterruptCount, "LastDistance":LightningData.LastDistance, "LightningEnergy": LightningData.LightningEnergy, "Noise_Floor": LightningData.Noise_Floor, "IndoorSet": LightningData.IndoorSet, "Display_LCO": LightningData.Display_LCO, "Minimum_Strikes": LightningData.Minimum_Strikes, "Mask_Disturber": LightningData.Mask_Disturber, "InterruptTimeStamp": LightningData.InterruptTimeStamp, "LastPublishTimeStamp": LightningData.LastPublishTimeStamp }
 #	print myMessage
 
         # Call publish here.
 
 	if (reason == 0x08):
-        	message = '{"dateTime":'+LightningData.LightningTimeStamp+', "lightning_distance":'+LightningData.LastDistance+', "lightning_energy": '+ LightningData.Energy' }'
+        	message = '{"dateTime":'+LightningData.LightningTimeStamp+', "lightning_distance":'+LightningData.LastDistance+', "lightning_energy": '+ LightningData.LightningEnergy+' }'
 	# if (reason == 0x04):
 	#	message = '{"dateTime":'+now+', "lightning_disturber":'1' }'
 
@@ -307,15 +307,12 @@ if __name__ == '__main__':
                 while True:
             		time.sleep(1)
 
-LightningEnergy = 0.0
-
 			# display lightning on LCD
 			if (LightningData.InterruptActive == True):
 
 				if (LightningData.LastInterruptResult == 0x08):
 					displayLightning() 
 
-					LightningData.LightnignStrikeCount++
 					LightningData.LightingDistance = LightnignData.LastDistance
 
 					# beep user
@@ -331,16 +328,12 @@ LightningEnergy = 0.0
 
 				elif (LightningData.LastInterruptResult == 0x04):
 
-					LightningData.LightingDisturberCount++
-
 					print "Disturber Found"
 					displayDisturber()
 					LightningData.InterruptActive = False
 					time.sleep(1)
 
 				elif (LightningData.LastInterruptResult == 0x01):
-
-					LightningData.NoiseCount++
 
 					print "Noise Found "
 					displayNoise()
