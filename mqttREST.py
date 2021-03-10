@@ -5,15 +5,20 @@ import json
 import socket
 from socket import AF_INET, SOCK_DGRAM
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 class mqttREST:
 
     _user      = None
     _password  = None
     _port      = None
     _client    = None
+    _clientID  = None
 
-    def __init__( self, user, password, port ):
+    def __init__( self, clientID, user, password, port ):
 
+	self.clientID = clientID
         self._user = user
         self._password = password
         self._port = port
@@ -22,7 +27,7 @@ class mqttREST:
     def wioRESTcall(self, url):
 
 	try: 
-       		r = requests.get(url)
+       		r = requests.get(url,verify=False)
 
        		#print(r.status_code)
        		#print(r.json())
@@ -34,6 +39,7 @@ class mqttREST:
        		else:
           		return "ERROR" 
 	except requests.exceptions.ConnectionError:
+		print url
 		print "Connection Error"
 		return "ERROR"
 
@@ -62,7 +68,7 @@ class mqttREST:
         broker_address= "172.16.0.4"
 
 	try:   
-            self._client = mqttClient.Client("Python")               # create new instance
+            self._client = mqttClient.Client(self._clientID)               # create new instance
             self._client.username_pw_set(self._user, self._password)    # set username and password
             self._client.on_connect= self.on_connect                 # attach function to callback
             self._client.connect(broker_address, self._port)          # connect to broker
