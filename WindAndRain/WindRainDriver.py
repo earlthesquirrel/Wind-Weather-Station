@@ -29,7 +29,7 @@ sys.path.append('../')
 import Pi_WeatherRack as Pi_WeatherRack
 from mqttREST import mqttREST
 
-messenger = mqttREST("power", "nD3M$3AhDob2K+xhAE", 1883)
+messenger = mqttREST("wind-1", "power", "nD3M$3AhDob2K+xhAE", 1883)
 
 
 import SDL_Pi_TCA9545
