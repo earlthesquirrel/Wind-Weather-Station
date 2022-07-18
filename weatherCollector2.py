@@ -144,3 +144,7 @@ messenger.build_and_send_msg(humiditySHT31, 'humidity', 'extraHumid2')
 #sound_URL = 'https://172.16.0.7/v1/node/GroveSoundA0/sound_level?access_token=98d89fd34a2946d169e0ad52c5f91b60'
 #soundVal = messenger.wioRESTcall(sound_URL)
 #messenger.build_and_send_msg(soundVal, 'sound_level', 'noise')
+
+
+
+print("TempSHT31 value", tempSHT31);
