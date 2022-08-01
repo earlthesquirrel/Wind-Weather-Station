@@ -109,59 +109,59 @@ weatherStation.setWindMode(SDL_MODE_SAMPLE, 5.0)
 
 # Main Program
 
-print ""
-print "Weather Board Driver -- Wind and Rain Only"
-print ""
-print ""
-print "Program Started at:"+ time.strftime("%Y-%m-%d %H:%M:%S")
-print ""
+print ("")
+print ("Weather Board Driver -- Wind and Rain Only")
+print ("")
+print ("")
+print ("Program Started at:"+ time.strftime("%Y-%m-%d %H:%M:%S"))
+print ("")
 
 
 
-print "----------------------"
-print returnStatusLine("ADS1015",weatherStation.ADS1015_Present)
-print returnStatusLine("ADS1115",weatherStation.ADS1115_Present)
-print "----------------------"
+print ("----------------------")
+print (returnStatusLine("ADS1015",weatherStation.ADS1015_Present))
+print (returnStatusLine("ADS1115",weatherStation.ADS1115_Present))
+print ("----------------------")
 
 while True:
 
-	print "----------------- "
-	print " WeatherRack Weather Sensors" 
-	print " WeatherRack Rain and Wind"	
-	print "----------------- "
+	print ("----------------- ")
+	print (" WeatherRack Weather Sensors" )
+	print (" WeatherRack Rain and Wind")
+	print ("----------------- ")
 	#
-	print "----------------- "
+	print ("----------------- ")
 
- 	windSpeed = weatherStation.current_wind_speed()/1.6
-  	windGust = weatherStation.get_wind_gust()/1.6
+	windSpeed = weatherStation.current_wind_speed()/1.6
+	windGust = weatherStation.get_wind_gust()/1.6
 	currentWindSpeed = "%0.2f" % windSpeed
 	currentWindGust = "%0.2f" % windGust
 
-  	print "Wind Speed=\t" + currentWindSpeed + " MPH"
-    	print "MPH wind_gust=\t" + currentWindGust + " MPH"
+	print ("Wind Speed=\t" + currentWindSpeed + " MPH")
+	print ("MPH wind_gust=\t" + currentWindGust + " MPH")
 
-  	if (weatherStation.ADS1015_Present or weatherStation.ADS1115_Present):	
+	if (weatherStation.ADS1015_Present or weatherStation.ADS1115_Present):	
 		currentWindDirection = "%0.2f" % weatherStation.current_wind_direction()
-		print "Wind Direction=\t\t\t"+ currentWindDirection
-		#print "Wind Direction=\t\t\t %0.2f Degrees" % weatherStation.current_wind_direction()
-		#print "Wind Direction Voltage=\t\t %0.3f V" % weatherStation.current_wind_direction_voltage()
+		print("Wind Direction=\t\t\t" + currentWindDirection)
+		#print("Wind Direction=\t\t\t %0.2f Degrees" % weatherStation.current_wind_direction())
+		#print("Wind Direction Voltage=\t\t %0.3f V" % weatherStation.current_wind_direction_voltage())
 
-	print "----------------- "
+	print ("----------------- ")
 
 	rain = weatherStation.get_current_rain_total();
 	totalRain = "%0.2f" % rain
-        print("Rain Total=\t"+totalRain+" in");
+	print("Rain Total=\t"+totalRain+" in");
 
 
- 	epoch_time = int (time.time())
-        message = '{"dateTime":'+str(epoch_time)+', "rain":'+totalRain+', "windDir":'+currentWindDirection+', "windSpeed": '+ currentWindSpeed+', "windGust": '+ currentWindGust+', "windGustDir":'+currentWindDirection+' }'
-	print message
+	epoch_time = int (time.time())
+	message = '{"dateTime":'+str(epoch_time)+', "rain":'+totalRain+', "windDir":'+currentWindDirection+', "windSpeed": '+ currentWindSpeed+', "windGust": '+ currentWindGust+', "windGustDir":'+currentWindDirection+' }'
+	print (message)
 
 	messenger.send_msg(message)
 
 	weatherStation.reset_rain_total()
 
 
-	print "----------------- "
+	print ("----------------- ")
 
 	time.sleep(5.0)

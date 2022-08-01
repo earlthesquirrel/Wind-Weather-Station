@@ -47,7 +47,7 @@ def fuzzyCompare(compareValue, value):
 	
 	VARYVALUE = 0.05
 
-   	if ( (value > (compareValue * (1.0-VARYVALUE)))  and (value < (compareValue *(1.0+VARYVALUE))) ):
+	if ( (value > (compareValue * (1.0-VARYVALUE)))  and (value < (compareValue *(1.0+VARYVALUE))) ):
      		return True
         
 	return False
@@ -131,27 +131,27 @@ class Pi_WeatherRack:
 	_currentRainCount = 0
 	_shortestWindTime = 0
 
- 	_pinAnem = 0
-   	_pinRain = 0
-     	_intAnem = 0
-      	_intRain = 0
-       	_ADChannel = 0
+	_pinAnem = 0
+	_pinRain = 0
+	_intAnem = 0
+	_intRain = 0
+	_ADChannel = 0
 	_ADMode = 0
 
 	ADS1015_Present = False
-    	ADS1115_Present = False
+	ADS1115_Present = False
 
-        _currentRainCount = 0
-        _currentWindCount = 0
-        _currentWindSpeed = 0.0
- 	_currentWindDirection = 0.0
-
-        _lastWindTime = 0
+	_currentRainCount = 0
+	_currentWindCount = 0
+	_currentWindSpeed = 0.0
+	_currentWindDirection = 0.0
+	
+	_lastWindTime = 0
 	_shortestWindTime = 0
-		         
+		        	 
 	_sampleTime = 5.0
 	_selectedMode = MODE_SAMPLE
- 	_startSampleTime = 0
+	_startSampleTime = 0
 
 	_currentRainMin = 0
 	_lastRainTime = 0
@@ -160,8 +160,8 @@ class Pi_WeatherRack:
 
 	_ads1015 = 0
 
-	def __init__(self, pinAnem, pinRain, intAnem, intRain, ADMode ):
 
+	def __init__(self, pinAnem, pinRain, intAnem, intRain, ADMode ):
 
 		GPIO.setup(pinAnem, GPIO.IN)
 		GPIO.setup(pinRain, GPIO.IN)
@@ -174,6 +174,7 @@ class Pi_WeatherRack:
 
 		ADS1015 = 0x00  # 12-bit ADC
 		ADS1115 = 0x01  # 16-bit ADC
+
 		# Select the gain
 		self.gain = 6144  # +/- 6.144V
 		#self.gain = 4096  # +/- 4.096V
@@ -196,6 +197,7 @@ class Pi_WeatherRack:
 			if ((0x0F & value) == 0):
 				weatherRack_.ADS1015_Present = True
 				weatherRack_.ADS1115_Present = False
+
 				# check again (1 out 16 chance of zero)
 				value = self.ads1015.readRaw(0, self.gain, self.sps) # AIN1 wired to wind vane on WeatherPiArduino
 				if ((0x0F & value) == 0):
@@ -213,9 +215,9 @@ class Pi_WeatherRack:
 
 
 		except TypeError as e:
-  	 		print "Type Error"
-    			self.ADS1015_Present = False
-    			self.ADS1115_Present = False
+			print ( "Type Error")
+			self.ADS1015_Present=False
+			self.ADS1115_Present=False
 
 		Pi_WeatherRack._ADMode = ADMode
 
@@ -223,33 +225,33 @@ class Pi_WeatherRack:
 	# Wind Direction Routines
 
 	def current_wind_direction(self):
-    
-    		if (Pi_WeatherRack._ADMode == MODE_I2C_ADS1015):
-			value = self.ads1015.readADCSingleEnded(1, self.gain, self.sps) # AIN1 wired to wind vane on WeatherPiArduino
+   	 
+		if (Pi_WeatherRack._ADMode == MODE_I2C_ADS1015):
+			# AIN1 wired to wind vane on WeatherPiArduino
+			value = self.ads1015.readADCSingleEnded(1, self.gain, self.sps) 
 
-      			voltageValue = value/1000
+			voltageValue = value/1000
 
-    		else:
-      			# user internal A/D converter
-      			voltageValue = 0.0
-  
+		else:
+			# user internal A/D converter
+			voltageValue = 0.0
+
+
 		direction = voltageToDegrees(voltageValue, Pi_WeatherRack._currentWindDirection)
-    		return direction;
-
-
+		return direction;
 
 	def current_wind_direction_voltage(self):
     
-    		if (Pi_WeatherRack._ADMode == MODE_I2C_ADS1015):
-			value = self.ads1015.readADCSingleEnded(1, self.gain, self.sps) # AIN1 wired to wind vane on WeatherPiArduino
+		if (Pi_WeatherRack._ADMode == MODE_I2C_ADS1015):
+			# AIN1 wired to wind vane on WeatherPiArduino
+			value = self.ads1015.readADCSingleEnded(1,self.gain,self.sps)
+			voltageValue = value/1000
+		else:
+			# user internal A/D converter
+			voltageValue = 0.0
 
-      			voltageValue = value/1000
+		return voltageValue
 
-    		else:
-      			# user internal A/D converter
-      			voltageValue = 0.0
-  
-    		return voltageValue
 
 	# Utility methods
 
@@ -257,80 +259,79 @@ class Pi_WeatherRack:
 		Pi_WeatherRack._currentRainTotal = 0.0;
 
 	def accessInternalCurrentWindDirection(self):
-   		return Pi_WeatherRack._currentWindDirection;
+		return Pi_WeatherRack._currentWindDirection;
 
 	def reset_wind_gust(self):
-   		Pi_WeatherRack._shortestWindTime = 0xffffffff;
+		Pi_WeatherRack._shortestWindTime = 0xffffffff;
 
 
 	def startWindSample(self, sampleTime):
-  
-      		Pi_WeatherRack._startSampleTime = micros();
-     
-      		Pi_WeatherRack._sampleTime = sampleTime;
+	
+		Pi_WeatherRack._startSampleTime = micros();
+
+		Pi_WeatherRack._sampleTime = sampleTime;
       
-	# get current wind 
+	# Get current wind 
 	def get_current_wind_speed_when_sampling(self):
 
+		compareValue = Pi_WeatherRack._sampleTime*1000000;
 
-   		compareValue = Pi_WeatherRack._sampleTime*1000000;
- 
-   		if (micros() - Pi_WeatherRack._startSampleTime >= compareValue):
-      			# sample time exceeded, calculate currentWindSpeed
-      			timeSpan = (micros() - Pi_WeatherRack._startSampleTime);
- 
-      			Pi_WeatherRack._currentWindSpeed = (float(Pi_WeatherRack._currentWindCount)/float(timeSpan)) * WIND_FACTOR*1000000.0
+		if (micros() - Pi_WeatherRack._startSampleTime >= compareValue):
+			# sample time exceeded, calculate currentWindSpeed
+			timeSpan = (micros() - Pi_WeatherRack._startSampleTime);
 
-			#print "CWS = %f, Pi_WeatherRack._shortestWindTime = %i, CWCount=%i TPS=%f" % (Pi_WeatherRack._currentWindSpeed,Pi_WeatherRack._shortestWindTime, Pi_WeatherRack._currentWindCount, float(Pi_WeatherRack._currentWindCount)/float(Pi_WeatherRack._sampleTime)) 
+			Pi_WeatherRack._currentWindSpeed = (float(Pi_WeatherRack._currentWindCount)/float(timeSpan)) * WIND_FACTOR*1000000.0
 
-      			Pi_WeatherRack._currentWindCount = 0
-      
-      			Pi_WeatherRack._startSampleTime = micros()
+			#print( "CWS = %f, Pi_WeatherRack._shortestWindTime = %i, CWCount=%i TPS=%f" % (Pi_WeatherRack._currentWindSpeed,Pi_WeatherRack._shortestWindTime, Pi_WeatherRack._currentWindCount, float(Pi_WeatherRack._currentWindCount)/float(Pi_WeatherRack._sampleTime)) )
+      			
+			Pi_WeatherRack._currentWindCount = 0
 
- 		#print "Pi_WeatherRack._currentWindSpeed=", Pi_WeatherRack._currentWindSpeed 
-   		return Pi_WeatherRack._currentWindSpeed
+			Pi_WeatherRack._startSampleTime = micros()
+
+		#print( "Pi_WeatherRack._currentWindSpeed=", Pi_WeatherRack._currentWindSpeed )
+		return Pi_WeatherRack._currentWindSpeed
 
 
 
 	def setWindMode(self, selectedMode, sampleTime): # time in seconds 
-  
-  		Pi_WeatherRack._sampleTime = sampleTime;
-  		Pi_WeatherRack._selectedMode = selectedMode;
-  
-  		if (Pi_WeatherRack._selectedMode == MODE_SAMPLE):
-  			self.startWindSample(Pi_WeatherRack._sampleTime);
+ 
+		Pi_WeatherRack._sampleTime = sampleTime;
+		Pi_WeatherRack._selectedMode = selectedMode;
+	  
+		if (Pi_WeatherRack._selectedMode == MODE_SAMPLE):
+			self.startWindSample(Pi_WeatherRack._sampleTime);
   
 	#def get current values
 
 	def get_current_rain_total(self):
-        	Pi_WeatherRack._currentRainTotal = (0.01 * float(Pi_WeatherRack._currentRainCount)) + Pi_WeatherRack._currentRainTotal
-        	Pi_WeatherRack._currentRainCount = 0;
+		Pi_WeatherRack._currentRainTotal = (0.01 * float(Pi_WeatherRack._currentRainCount)) + Pi_WeatherRack._currentRainTotal
+		Pi_WeatherRack._currentRainCount = 0;
 		return Pi_WeatherRack._currentRainTotal;
 
 
 	def current_wind_speed(self): # in milliseconds
   
-  		if (Pi_WeatherRack._selectedMode == MODE_SAMPLE):
-    			Pi_WeatherRack._currentWindSpeed = self.get_current_wind_speed_when_sampling();
-  		else:
-    			# km/h * 1000 msec
-    
-    			Pi_WeatherRack._currentWindCount = 0;
-    			delay(Pi_WeatherRack._sampleTime*1000);
-    			Pi_WeatherRack._currentWindSpeed = (float(Pi_WeatherRack._currentWindCount)/float(Pi_WeatherRack._sampleTime)) * WIND_FACTOR;
+		if (Pi_WeatherRack._selectedMode == MODE_SAMPLE):
+				Pi_WeatherRack._currentWindSpeed = self.get_current_wind_speed_when_sampling();
+		else:
+			# km/h * 1000 msec
+
+			Pi_WeatherRack._currentWindCount = 0;
+			delay(Pi_WeatherRack._sampleTime*1000);
+			Pi_WeatherRack._currentWindSpeed = (float(Pi_WeatherRack._currentWindCount)/float(Pi_WeatherRack._sampleTime)) * WIND_FACTOR;
 
 
-  		return Pi_WeatherRack._currentWindSpeed;
+		return Pi_WeatherRack._currentWindSpeed;
 
 	def get_wind_gust(self):
    
-  		latestTime =Pi_WeatherRack._shortestWindTime;
-  		Pi_WeatherRack._shortestWindTime=0xffffffff;
-  		time=latestTime/1000000.0;  # in microseconds
+		latestTime =Pi_WeatherRack._shortestWindTime;
+		Pi_WeatherRack._shortestWindTime=0xffffffff;
+		time=latestTime/1000000.0;  # in microseconds
 		if (time == 0):
 			return 0
 		else:
-  			return (1.0/float(time))*WIND_FACTOR;
+			return (1.0/float(time))*WIND_FACTOR;
 
 
 	# Interrupt Routines
@@ -349,11 +350,11 @@ class Pi_WeatherRack:
 
 
 	def serviceInterruptRain(self,channel):
-		print "Rain Interrupt Service Routine"
-  		currentTime=(micros()-Pi_WeatherRack._lastRainTime);
+		print ("Rain Interrupt Service Routine")
+		currentTime=(micros()-Pi_WeatherRack._lastRainTime);
 
-  		Pi_WeatherRack._lastRainTime=micros();
-  		if(currentTime>500):   # debounce
-       			Pi_WeatherRack._currentRainCount = Pi_WeatherRack._currentRainCount+1
-    			if(currentTime<Pi_WeatherRack._currentRainMin):
-     				Pi_WeatherRack._currentRainMin=currentTime;
+		Pi_WeatherRack._lastRainTime=micros();
+		if(currentTime>500):   # debounce
+			Pi_WeatherRack._currentRainCount = Pi_WeatherRack._currentRainCount+1
+			if(currentTime<Pi_WeatherRack._currentRainMin):
+				Pi_WeatherRack._currentRainMin=currentTime;
