@@ -2,26 +2,16 @@ import paho.mqtt.client as mqttClient
 import time
 import json
 
-### For WeatherSense messages
-
-# WSRadiationn
+### weather/radiation
 def on_message_radiation(mosq, obj, msg):
-	print("In Radiation Callback")
-	j = json.loads(msg.payload)
-	msgTime = j["time"]; 
-	CPM_value = j["CPM"]; 
-	nSVh_value = j["nSVh"]; 
-	uSVh_value = j["uSVh"]; 
-	epoch_time = int (time.time())
-	message = '{"dateTime":'+str(epoch_time)+', "CPM" : '+str(CPM_value)+', "nSVh" : '+str(nSVh_value)+', "uSVh" : '+str(uSVh_value)+'}'
-	mosq.publish("weather", message);
-	print("Message is :"+message);
-	return
+	#print("In Radiation Callback")
+	mosq.publish("weather", msg.payload);
+	print("Message is: "+msg.payload)
 
 ## /ea14e76e308ff50a0e09a7e5bf96749a/air/heatindex
 def on_message_heatindex(mosq, obj, msg):
 
-	#print("In HeatIndexCallback")
+	#print("In HeadIndexCallback")
 	j = json.loads(msg.payload)
 	value = j["heatindex"]; 
 	epoch_time = int (time.time())
@@ -105,8 +95,8 @@ mqttc.connect("172.16.0.4", 1883, 120)
 
 # Add message callbacks that will only trigger on a specific subscription match
 
-mqttc.message_callback_add('/weathersense/WSRadiation', on_message_radiation)
-mqttc.message_callback_add('/weathersense/WSAQI', on_message_aqi)
+mqttc.message_callback_add('/weather/raditation', on_message_radiation)
+mqttc.message_callback_add('/ea14e76e308ff50a0e09a7e5bf96749a/air/temperature', on_message_temperature)
 mqttc.message_callback_add('/ea14e76e308ff50a0e09a7e5bf96749a/air/humidity', on_message_humidity)
 #mqttc.message_callback_add('/ea14e76e308ff50a0e09a7e5bf96749a/air/heatindex', on_message_heatindex)
 
