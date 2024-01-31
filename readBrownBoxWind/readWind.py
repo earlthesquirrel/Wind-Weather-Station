@@ -61,7 +61,7 @@ def parse_wind(data):
         print(wind_dir)
 
 
-port = "/dev/cu.usbmodem14101"
+port = "/dev/cu.usbmodem141101"
 baudrate = 115200
 
 ser = serial.Serial(port, baudrate, timeout=1)
