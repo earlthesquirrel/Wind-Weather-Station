@@ -1,0 +1,94 @@
+import weewx
+from weewx.engine import StdService
+
+class AddC2h5oh(StdService):
+
+    def __init__(self, engine, config_dict):
+
+      # Initialize my superclass first:
+      super(AddC2h5oh, self).__init__(engine, config_dict)
+
+      # Bind to any new archive record events:
+      self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+
+    def new_archive_record(self, event):
+
+        currentC2h5oh  = getC2H5OH()
+        event.record['c2h5oh'] = currentC2h5oh
+
+class AddC3h8(StdService):
+
+    def __init__(self, engine, config_dict):
+
+      # Initialize my superclass first:
+      super(AddC3h8, self).__init__(engine, config_dict)
+
+      # Bind to any new archive record events:
+      self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+
+    def new_archive_record(self, event):
+
+        currentC3h8  = getC3h8()
+        event.record['c3h8'] = currentC3h8
+
+class AddC4h10(StdService):
+
+    def __init__(self, engine, config_dict):
+
+      # Initialize my superclass first:
+      super(AddC4h10, self).__init__(engine, config_dict)
+
+      # Bind to any new archive record events:
+      self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+
+    def new_archive_record(self, event):
+
+        currentC4h10  = getC4h10()
+        event.record['c4h10'] = currentC4h10
+
+class AddCh4(StdService):
+
+    def __init__(self, engine, config_dict):
+
+      # Initialize my superclass first:
+      super(AddCh4, self).__init__(engine, config_dict)
+
+      # Bind to any new archive record events:
+      self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+
+    def new_archive_record(self, event):
+
+        currentCh4  = getCH4()
+        event.record['ch4'] = currentCh4
+
+class AddH2(StdService):
+
+    def __init__(self, engine, config_dict):
+
+      # Initialize my superclass first:
+      super(AddH2, self).__init__(engine, config_dict)
+
+      # Bind to any new archive record events:
+      self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+
+    def new_archive_record(self, event):
+
+        currentH2  = getH2()
+        event.record['h2'] = currentH2
+
+
+import schemas.wview_extended
+
+schema_with_gas = {
+    'table': schemas.wview_extended.table + [('c2h5oh', 'REAL')],
+    'day_summaries' : schemas.wview_extended.day_summaries + [('c2h5oh', 'SCALAR')]
+    'table': schemas.wview_extended.table + [('c3h8', 'REAL')],
+    'day_summaries' : schemas.wview_extended.day_summaries + [('c3h8', 'SCALAR')]
+    'table': schemas.wview_extended.table + [('c4h10', 'REAL')],
+    'day_summaries' : schemas.wview_extended.day_summaries + [('c4h10', 'SCALAR')]
+    'table': schemas.wview_extended.table + [('ch4', 'REAL')],
+    'day_summaries' : schemas.wview_extended.day_summaries + [('ch4', 'SCALAR')]
+    'table': schemas.wview_extended.table + [('h2', 'REAL')],
+    'day_summaries' : schemas.wview_extended.day_summaries + [('h2', 'SCALAR')]
+}
+
