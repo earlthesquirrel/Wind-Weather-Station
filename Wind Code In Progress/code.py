@@ -46,17 +46,22 @@ esp32_reset = DigitalInOut(board.D12)
 #const int mqtt_port = 1883;
 '''
 
-lastDebounceTime = 0
-debounceDelay = 1000
+lastWindDebounceTime = 0
+windDebounceDelay = 1000
+
+lastRainDebounceTime = 0
+rainDebounceDelay = 500
 
 anemometer =  board.D5 # The aneometer (wind speed) interrupt pin
 windVane = AnalogIn(board.A0) # The nanalog pin used by wind vane
+rainGauge = board.D11 # Tbe rain gauge interrupt pin
 
 # Initial values for the measurements we report
 wind_dir = 0.0
 wind_speed = 0
 compass_dir = 'N'
-count = 0
+windCount = 0
+rainCount = 0
 
 
 check_sec = 3 # How frequently we check wind speed and wind direction
@@ -109,9 +114,27 @@ r.close()
 rtclock.datetime = time.localtime(int(1707505760))
 
 compass = ["N  ","NNE","NE ","ENE","E  ","ESE","SE ","SSE","S  ","SSW","SW ","WSW","W  ","WNW","NW ","NNW","N  "]
+rainFactor = 0.0161
 
 print("Setting time")
 print(time.time())
+
+async def readRainAmount(delay):
+    global lastRainDebounceTime
+    global rainDebounceDelay
+    global rainCount
+    global rainAmount
+
+    await asyncio.sleep(delay)
+
+    while True:
+        milli_sec = int(round(time.time() * 1000))
+        if ((milli_sec - lastRainDebounceTime) > rainDebounceDelay):
+            lastRainDebounceTime = milli_sec
+            rainCount = 0
+            rainAmount = rainCount * rainFactor
+        await asyncio.sleep(delay)
+
 
 
 async def readWindDirection(delay):
@@ -124,7 +147,7 @@ async def readWindDirection(delay):
     while True:
         #print("windVane raw "+str(windVane.value))
         wind_dir = map_range(windVane.value, float(0), float(60046), float(0), float(360))
-        wind_dir_10_min.appendleft(wind_dir)
+        wind_dir_10_min.append(wind_dir)
 
         #print("wind dir ="+str(wind_dir))
         index = wind_dir % 360
@@ -136,9 +159,9 @@ async def readWindDirection(delay):
 
 
 async def readWindSpeed(delay):
-    global count
-    global lastDebounceTime
-    global debounceDelay
+    global windCount
+    global lastWindDebounceTime
+    global windDebounceDelay
     global wind_speed
     global wind_speed_10_min
 
@@ -146,16 +169,16 @@ async def readWindSpeed(delay):
 
     while True:
         milli_sec = int(round(time.time() * 1000))
-        if ((milli_sec - lastDebounceTime) > debounceDelay):
-            lastDebounceTime = milli_sec
+        if ((milli_sec - lastWindDebounceTime) > windDebounceDelay):
+            lastWindDebounceTime = milli_sec
 
             # Sensor Resolution is 0.0875 m/s
             # 1 Round in 1 Sec = 20 pulses, Wind Speed = 1.75 m/s
             # 4.5 Round in 1 Sec = 90 pulses, Wind Speed = 7.875 m/s
 
-            wind_speed = count * 8.75 * 0.01;
+            wind_speed = windCount * 8.75 * 0.01;
             wind_speed  = wind_speed * 2.2369 # Converting from m/s to miles/hour
-            wind_speed_10_min.appendleft(wind_speed)
+            wind_speed_10_min.append(wind_speed)
             #print("Wind Speed: "+str(wind_speed)+" m/s")  # in m/s
             count = 0
         await asyncio.sleep(delay)
@@ -173,8 +196,8 @@ async def averageWindData():
     two_min = (2*60)/check_sec
     # Both 2 min and 10 min are of interest.
 
-    samples_dir = wind_dir_10_min.len
-    samples_speed = wind_speed_10_min.len
+    samples_dir = len(wind_dir_10_min)
+    samples_speed = len(wind_speed_10_min)
 
     low_10_val = 300
     low_10_index = 0
@@ -266,26 +289,41 @@ async def createMQTTMsg(delay):
 
 
 
-async def catch_interrupt(pin):
+async def catch_WindInterrupt(pin):
     global count
     with countio.Counter(pin) as interrupt:
         while True:
             if interrupt.count > 0:
-                count = count+interrupt.count
+                windCount = windCount+interrupt.count
                 interrupt.count = 0
                 #print("interrupted!")
             # Let another task run.
             await asyncio.sleep(0)
 
 
+
+async def catch_RainInterrupt(pin):
+    global rainCount
+    with countio.Counter(pin) as interrupt:
+        while True:
+            if interrupt.count > 0:
+                rainCount = rainCount+interrupt.count
+                interrupt.count = 0
+                #print("interrupted!")
+            # Let another task run.
+            await asyncio.sleep(0)
+
+
+
 async def main():
     global check_sec
-    interrupt_task = asyncio.create_task(catch_interrupt(anemometer))
+    windInterrupt_task = asyncio.create_task(catch_WindInterrupt(anemometer))
+    rainInterrupt_task = asyncio.create_task(catch_RainInterrupt(rainGauge))
     speed_task = asyncio.create_task(readWindSpeed(check_sec))
     direction_task = asyncio.create_task(readWindDirection(check_sec))
     average_task = asyncio.create_task(averageWindData())
     mqtt_task = asyncio.create_task(createMQTTMsg(12))
-    await asyncio.gather(interrupt_task, speed_task, direction_task)
+    await asyncio.gather(windInterrupt_task,rainInterrupt_task, speed_task, direction_task)
     print("done")
 
 asyncio.run(main())

@@ -1,19 +1,18 @@
-# SPDX-FileCopyrightText: 2019 ladyada for Adafruit Industries
-# SPDX-License-Identifier: MIT
-
 from os import getenv
 import board
 import busio
 import rtc
+import keypad
 import time
 import asyncio
 import countio
+import collections
 
 from digitalio import DigitalInOut
 from analogio import AnalogIn
 from adafruit_simplemath import map_range
 
-'''
+
 import adafruit_requests as requests
 import adafruit_esp32spi.adafruit_esp32spi_socket as socket
 from adafruit_esp32spi import adafruit_esp32spi
@@ -34,30 +33,55 @@ if secrets == {"ssid": None, "password": None}:
 
 
 # If you have an AirLift Featherwing or ItsyBitsy Airlift:
-esp32_cs = DigitalInOut(board.D13)
-esp32_ready = DigitalInOut(board.D11)
-esp32_reset = DigitalInOut(board.D12)
+#esp32_cs = DigitalInOut(board.D13)
+#esp32_ready = DigitalInOut(board.D11)
+#esp32_reset = DigitalInOut(board.D12)
+esp32_cs = DigitalInOut(board.ESP_CS)
+esp32_ready = DigitalInOut(board.ESP_BUSY)
+esp32_reset = DigitalInOut(board.ESP_RESET)
 
-#const char *mqtt_broker = "69.109.130.206";
-#const char *topic = "weather/test";
-#const char *mqtt_username = "power";
-#const char *mqtt_password = "nD3M$3AhDob2K+xhAE";
+#const char *mqtt_broker = "69.109.130.206"
+#const char *topic = "weather/test"
+#const char *mqtt_username = "power"
+#const char *mqtt_password = "nD3M$3AhDob2K+xhAE"
 #const int mqtt_port = 1883;
-'''
 
-lastDebounceTime = 0
-debounceDelay = 1000
+lastWindDebounceTime = 0
+windDebounceDelay = 1000
+
+messageStartTime = 0
 
 anemometer =  board.D5 # The aneometer (wind speed) interrupt pin
 windVane = AnalogIn(board.A0) # The nanalog pin used by wind vane
+rainGauge = board.D2 # Tbe rain gauge interrupt pin
 
 # Initial values for the measurements we report
 wind_dir = 0.0
 wind_speed = 0
 compass_dir = 'N'
-count = 0
 
-'''
+avg_dir_10m = 0
+avg_speed_10m = 0
+gust_10_min = 0
+avg_compass_10m = 'N'
+
+avg_dir_2m = 0
+avg_speed_2m = 0
+gust_2_min = 0
+avg_compass_2m = 'N'
+
+# Counters for how often interrrupts have triggered
+windCount = 0
+rainCount = 0
+
+
+check_wind_sec = 3 # How frequently we check wind speed and wind direction, in seconds
+queue_size = int( (10 * 60)/ check_wind_sec ) # For 10 minute interval, we have 10 min * 60 sec / check_wind_sec interval values.
+wind_dir_10_min = collections.deque((),queue_size)
+wind_speed_10_min = collections.deque((),queue_size)
+
+check_rain_sec = 15 # How frequently we check rain amount, in seconds
+
 # Secondary (SCK1) SPI used to connect to WiFi board on Arduino Nano Connect RP2040
 if "SCK1" in dir(board):
     spi = busio.SPI(board.SCK1, board.MOSI1, board.MISO1)
@@ -85,23 +109,23 @@ while not esp.is_connected:
 print("Connected to", str(esp.ssid, "utf-8"), "\tRSSI:", esp.rssi)
 print("My IP address is", esp.pretty_ip(esp.ip_address))
 
+#TEXT_URL = "http://wifitest.adafruit.com/testwifi/index.html"
+# URL for time with my keys
 TEXT_URL = "https://io.adafruit.com/api/v2/time/seconds?x-aio-key=5e2a8804feafe7214cd3711c5138a2f2a02b4414&tz=UTC"
 
 # esp._debug = True
-'''
-# Get Time sync'ed with a global baseline
-rtclock = rtc.RTC()
-'''
 print("Fetching text from", TEXT_URL)
 r = requests.get(TEXT_URL)
 print(r.text)
-rtclock.datetime = time.localtime(int(r.text))
+epochTime = int(r.text)
 r.close()
+
 
 '''
 rtclock.datetime = time.localtime(int(1707505760))
-
+'''
 compass = ["N  ","NNE","NE ","ENE","E  ","ESE","SE ","SSE","S  ","SSW","SW ","WSW","W  ","WNW","NW ","NNW","N  "]
+rainFactor = 0.0161
 
 print("Setting time")
 print(time.time())
@@ -110,12 +134,15 @@ print(time.time())
 async def readWindDirection(delay):
     global wind_dir
     global compass_dir
+    global wind_dir_10_min
 
     await asyncio.sleep(delay)
 
     while True:
         #print("windVane raw "+str(windVane.value))
         wind_dir = map_range(windVane.value, float(0), float(60046), float(0), float(360))
+        wind_dir_10_min.append(wind_dir)
+
         #print("wind dir ="+str(wind_dir))
         index = wind_dir % 360
         index = int(round(index/ 22.5,0))
@@ -126,21 +153,148 @@ async def readWindDirection(delay):
 
 
 async def readWindSpeed(delay):
-    global count
-    global lastDebounceTime
-    global debounceDelay
+    global windCount
+    global lastWindDebounceTime
+    global windDebounceDelay
     global wind_speed
+    global wind_speed_10_min
 
     await asyncio.sleep(delay)
 
     while True:
         milli_sec = int(round(time.time() * 1000))
-        if ((milli_sec - lastDebounceTime) > debounceDelay):
-            lastDebounceTime = milli_sec
-            wind_speed = count * 8.75 * 0.01;
+        if ((milli_sec - lastWindDebounceTime) > windDebounceDelay):
+            lastWindDebounceTime = milli_sec
+
+            # Sensor Resolution is 0.0875 m/s
+            # 1 Round in 1 Sec = 20 pulses, Wind Speed = 1.75 m/s
+            # 4.5 Round in 1 Sec = 90 pulses, Wind Speed = 7.875 m/s
+
+            wind_speed = windCount * 8.75 * 0.01;
+            wind_speed  = wind_speed * 2.2369 # Converting from m/s to miles/hour
+            wind_speed_10_min.append(wind_speed)
             #print("Wind Speed: "+str(wind_speed)+" m/s")  # in m/s
             count = 0
         await asyncio.sleep(delay)
+
+
+
+async def averageWindData():
+
+    global wind_dir_10_min
+    global wind_speed_10_min
+
+    global wind_dir_2_min
+    global wind_speed_2_min
+
+    global avg_dir_2m
+    global avg_speed_2m
+    global gust_2_min
+    global avg_compass_2m
+
+    global avg_dir_10m
+    global avg_speed_10m
+    global gust_10_min
+    global avg_compass_10m
+
+
+    # We need to see if we have 2 min and/or 10 min of data
+
+    # We should have (10*60)/check_wind_sec values if we have 10 min of data
+    ten_min = (10*60)/check_wind_sec
+    # We should have (2*60)/check_wind_sec values if we have 2 min of data
+    two_min = (2*60)/check_wind_sec
+    # Both 2 min and 10 min are of interest.
+
+    samples_dir = len(wind_dir_10_min)
+    samples_speed = len(wind_speed_10_min)
+
+    low_10_val = 300
+    low_10_index = 0
+    low_10_val = 300
+    avg_dir_10m = 0
+    avg_speed_10m = 0
+    gust_10_min = 0
+
+    low_index = 0
+    high_10_val = 0
+    high_10_index = 0
+    high_2_val = 0
+    high_2_index = 0
+    avg_dir_2m = 0
+    avg_speed_2m = 0
+    gust_2_min = 0
+
+    # From NWS - Gusts are reported when the peak wind speed reaches at least 16 knots (8.23111 m/s)
+    # and the variation in wind speed between the peaks and lulls is at least 9 knots (4.63 m/s)
+    # The duration of a gust is usually less than 20 sec
+
+    if (samples_dir >= two_min and samples_speed >= two_min):
+        print("In 2 min section")
+        # We have 2 min worth of data
+        index = 0
+        for val in wind_speed_2_min[0:two_min]:
+            print("in 2 min" + str(val))
+            if val < low_2_val :
+                low_2_val = val
+            if val > high_2_val:
+                high_2_val = val
+                high_2_index = index
+            avg_speed_2m = avg_speed_2m + val
+            index+=1
+
+        avg_speed_2m = avg_speed_2m / two_min
+
+        if high_2_val >= low_2_val + 8.23111 :
+            # This means we passed the first criteria
+            if high_2_val + 4.63 > avg_speed_2m :
+                # This means we passed the second criteria
+                gust_2_min = high_2_val
+
+        for val in wind_dir_2_min[0:two_min]:
+            avg_dir_2m = avg_dir_2m + val
+
+        avg_dir_2m = avg_dir_2m / two_min
+
+        index = avg_dir_2m % 360
+        index = int(round(index/ 22.5,0))
+        avg_compass_2m = compass[index]
+
+    else:
+        return False
+
+    if (samples_dir >= ten_min and samples_speed >= ten_min):
+        print("In 10 min section")
+        # We have 10 min worth of data
+        index = 0
+        for index, val in wind_speed_10_min[0:ten_min]:
+            print("in 10 min" + str(val))
+            if val < low_10_val :
+                low_10_val = val
+            if val > high_10_val:
+                high_10_val = val
+                high_10_index = index
+            avg_speed_10m = avg_speed_10m + val
+            index+=1
+
+        avg_speed_10m = avg_speed_10m / ten_min
+
+        if high_10_val >= low_10_val + 8.23111 :
+            # This means we passed the first criteria
+            if high_10_val + 4.63 > avg_speed_10m :
+                # This means we passed the second criteria
+                gust_10_min = high_10_val
+
+        for val in wind_dir_10_min[0:ten_min]:
+            avg_dir_10m = avg_dir_10m + val
+
+        avg_dir_10m = avg_dir_10m / ten_min
+
+        index = avg_dir_10m % 360
+        index = int(round(index/ 22.5,0))
+        avg_compass_10m = compass[index]
+    else:
+        return False
 
 
 
@@ -148,37 +302,107 @@ async def createMQTTMsg(delay):
     global compass_dir
     global wind_dir
     global wind_speed
+    global rainCount
+
+    oneMinStartTime = int(round(time.time() * 1000))
+    twoMinStartTime = int(round(time.time() * 1000))
+    tenMinStartTime = int(round(time.time() * 1000))
+
+    rain_daily_amount = 0
+
 
     await asyncio.sleep(delay)
 
     while True:
-        message = '{ "dateTime":'+str(time.time())+', "wind_dir degrees":'+str(wind_dir)+' , "wind_dir compass":'+compass_dir+' , "wind_speed":'+str(wind_speed)+' }'
+        message = '{ "dateTime":'+str(time.time())+', "windDir":'+str(wind_dir)+', "windDirCmp":'+compass_dir+', "windSpeed":'+str(wind_speed)+' }'
         print(message)
+
+        intervalTimeCheck = int(round(time.time() * 1000 ))
+
+        # Every 2 min
+        if intervalTimeCheck > twoMinStartTime + ( 2 * 60 * 1000 ) :
+            averageWindData()
+            message = '{ "dateTime":'+str(time.time())+', "windDir2MinAvg":'+str(avg_dir_2m)+', "windDir2MinCmp":'+avg_compass_2m+', "windSpeed2MinAvg":'+str(avg_speed_2m)+', "windGust2Min":'+str(gust_2_min)+' }'
+            print(message)
+            twoMinStartTime = intervalTimeCheck
+
+        # Every 10 min
+        if intervalTimeCheck > tenMinStartTime + ( 10 * 60 * 1000 ) :
+            message = '{ "dateTime":'+str(time.time())+', "windDir10MinAvg":'+str(avg_dir_10m)+' , "windDir10MinCmp":'+avg_compass_10m+', "windSpeed10MinAvg":'+str(avg_speed_10m)+', "windGust10Min":'+str(gust_10_min)+' }'
+            print(message)
+            tenMinStartTime = intervalTimeCheck
+
+        # Every min
+        if intervalTimeCheck > ( 1 * 60 * 1000 ) :
+            rain_amount = rainCount * rainFactor
+            rain_daily_amount = rain_daily_amount + rain_amount
+            message = '{ "dateTime":'+str(time.time())+', "rain":'+str(rain_amount)+' }'
+            rainCount = 0
+            print(message)
+            oneMinStartTime = intervalTimeCheck
+
+
         await asyncio.sleep(delay)
 
 
 
-async def catch_interrupt(pin):
-    global count
+async def catch_WindInterrupt(pin):
+    global windCount
     with countio.Counter(pin) as interrupt:
         while True:
             if interrupt.count > 0:
-                count = count+interrupt.count
+                windCount = windCount+interrupt.count
                 interrupt.count = 0
-                #print("interrupted!")
+                #print("Wind interrupted!")
             # Let another task run.
             await asyncio.sleep(0)
 
 
+
+"""
+async def catch_RainInterrupt(pin):
+    global rainCount
+    with countio.Counter(pin) as interrupt:
+        while True:
+            if interrupt.count > 0:
+                rainCount = rainCount+interrupt.count
+                interrupt.count = 0
+                print("Rain interrupted!")
+            # Let another task run.
+            await asyncio.sleep(0)
+
+"""
+
+async def catch_RainInterrupt(pin):
+    """Print a message when pin goes low and when it goes high."""
+    global rainCount
+    with keypad.Keys((pin,), value_when_pressed=False) as keys:
+        while True:
+            event = keys.events.get()
+            if event:
+                if event.pressed:
+                    #print("pin went low")
+                    rainCount = rainCount + 1
+                #elif event.released:
+                    #print("pin went high")
+                    #rainCount = rainCount + 1
+            await asyncio.sleep(0)
+
+
+
+
 async def main():
-    interrupt_task = asyncio.create_task(catch_interrupt(anemometer))
-    speed_task = asyncio.create_task(readWindSpeed(3))
-    direction_task = asyncio.create_task(readWindDirection(3))
+    global check_wind_sec
+    windInterrupt_task = asyncio.create_task(catch_WindInterrupt(anemometer))
+    rainInterrupt_task = asyncio.create_task(catch_RainInterrupt(rainGauge))
+    speed_task = asyncio.create_task(readWindSpeed(check_wind_sec))
+    direction_task = asyncio.create_task(readWindDirection(check_wind_sec))
     mqtt_task = asyncio.create_task(createMQTTMsg(12))
-    await asyncio.gather(interrupt_task, speed_task, direction_task)
+    await asyncio.gather(windInterrupt_task, rainInterrupt_task, speed_task, direction_task)
     print("done")
 
 asyncio.run(main())
 
 
 
+s
