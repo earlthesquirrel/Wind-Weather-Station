@@ -1,3 +1,0 @@
-Adafruit CircuitPython 8.2.9 on 2023-12-06; Adafruit Metro M4 Airlift Lite with samd51j19
-Board ID:metro_m4_airlift_lite
-UID:8491E0954B3546532020204D110A11FF

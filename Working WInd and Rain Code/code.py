@@ -36,24 +36,27 @@ if secrets == {"ssid": None, "password": None}:
 #esp32_cs = DigitalInOut(board.D13)
 #esp32_ready = DigitalInOut(board.D11)
 #esp32_reset = DigitalInOut(board.D12)
-esp32_cs = DigitalInOut(board.ESP_CS)
-esp32_ready = DigitalInOut(board.ESP_BUSY)
-esp32_reset = DigitalInOut(board.ESP_RESET)
 
-#const char *mqtt_broker = "69.109.130.206"
-#const char *topic = "weather/test"
-#const char *mqtt_username = "power"
-#const char *mqtt_password = "nD3M$3AhDob2K+xhAE"
-#const int mqtt_port = 1883;
+esp32_cs = DigitalInOut(board.D10)
+esp32_ready = DigitalInOut(board.D7)
+esp32_reset = DigitalInOut(board.D5)
+
+mqtt_broker = "69.109.130.206"
+weather_feed = "weather/test"
+mqtt_username = "power"
+mqtt_password = "nD3M$3AhDob2K+xhAE"
+mqtt_port = 1883;
 
 lastWindDebounceTime = 0
 windDebounceDelay = 1000
 
 messageStartTime = 0
+lastRainDebounceTime = 0
+rainDebounceDelay = 500
 
 anemometer =  board.D5 # The aneometer (wind speed) interrupt pin
 windVane = AnalogIn(board.A0) # The nanalog pin used by wind vane
-rainGauge = board.D2 # Tbe rain gauge interrupt pin
+rainGauge = board.D11 # Tbe rain gauge interrupt pin
 
 # Initial values for the measurements we report
 wind_dir = 0.0
@@ -82,11 +85,7 @@ wind_speed_10_min = collections.deque((),queue_size)
 
 check_rain_sec = 15 # How frequently we check rain amount, in seconds
 
-# Secondary (SCK1) SPI used to connect to WiFi board on Arduino Nano Connect RP2040
-if "SCK1" in dir(board):
-    spi = busio.SPI(board.SCK1, board.MOSI1, board.MISO1)
-else:
-    spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
+spi = board.SPI()
 esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
 
 requests.set_socket(socket, esp)
@@ -109,8 +108,6 @@ while not esp.is_connected:
 print("Connected to", str(esp.ssid, "utf-8"), "\tRSSI:", esp.rssi)
 print("My IP address is", esp.pretty_ip(esp.ip_address))
 
-#TEXT_URL = "http://wifitest.adafruit.com/testwifi/index.html"
-# URL for time with my keys
 TEXT_URL = "https://io.adafruit.com/api/v2/time/seconds?x-aio-key=5e2a8804feafe7214cd3711c5138a2f2a02b4414&tz=UTC"
 
 # esp._debug = True
@@ -121,14 +118,53 @@ epochTime = int(r.text)
 r.close()
 
 
-'''
-rtclock.datetime = time.localtime(int(1707505760))
-'''
 compass = ["N  ","NNE","NE ","ENE","E  ","ESE","SE ","SSE","S  ","SSW","SW ","WSW","W  ","WNW","NW ","NNW","N  "]
 rainFactor = 0.0161
 
 print("Setting time")
 print(time.time())
+
+# Define callback methods which are called when events occur
+# pylint: disable=unused-argument, redefined-outer-name
+def connected(client, userdata, flags, rc):
+    # This function will be called when the client is connected
+    # successfully to the broker.
+    print(f"Connected to Baugh.org. Listening for msgs")
+    # Subscribe to all changes on the FEED_NAME.
+    #client.subscribe(FEED_NAME)
+
+
+def disconnected(client, userdata, rc):
+    # This method is called when the client is disconnected
+    print("Disconnected from Baugh.org.")
+
+
+def message(client, topic, message):
+    # This method is called when a topic the client is subscribed to
+    # has a new message.
+    print(f"New message on topic {topic}: {message}")
+
+MQTT.set_socket(socket, esp)
+
+# Set up a MiniMQTT Client
+mqtt_client = MQTT.MQTT(
+    broker=mqtt_broker,
+    port=mqtt_port,
+    username=mqtt_username,
+    password=mqtt_password
+)
+
+# Setup the callback methods above
+mqtt_client.on_connect = connected
+mqtt_client.on_disconnect = disconnected
+mqtt_client.on_message = message
+
+print("Connecting to MQTT Server...")
+mqtt_client.connect()
+
+def sendMqttMsg( message):
+    mqtt_client.publish(weather_feed, message)
+
 
 
 async def readWindDirection(delay):
@@ -316,6 +352,7 @@ async def createMQTTMsg(delay):
     while True:
         message = '{ "dateTime":'+str(time.time())+', "windDir":'+str(wind_dir)+', "windDirCmp":'+compass_dir+', "windSpeed":'+str(wind_speed)+' }'
         print(message)
+        sendMqttMsg(message)
 
         intervalTimeCheck = int(round(time.time() * 1000 ))
 
@@ -324,12 +361,14 @@ async def createMQTTMsg(delay):
             averageWindData()
             message = '{ "dateTime":'+str(time.time())+', "windDir2MinAvg":'+str(avg_dir_2m)+', "windDir2MinCmp":'+avg_compass_2m+', "windSpeed2MinAvg":'+str(avg_speed_2m)+', "windGust2Min":'+str(gust_2_min)+' }'
             print(message)
+            sendMqttMsg(message)
             twoMinStartTime = intervalTimeCheck
 
         # Every 10 min
         if intervalTimeCheck > tenMinStartTime + ( 10 * 60 * 1000 ) :
             message = '{ "dateTime":'+str(time.time())+', "windDir10MinAvg":'+str(avg_dir_10m)+' , "windDir10MinCmp":'+avg_compass_10m+', "windSpeed10MinAvg":'+str(avg_speed_10m)+', "windGust10Min":'+str(gust_10_min)+' }'
             print(message)
+            sendMqttMsg(message)
             tenMinStartTime = intervalTimeCheck
 
         # Every min
@@ -339,6 +378,7 @@ async def createMQTTMsg(delay):
             message = '{ "dateTime":'+str(time.time())+', "rain":'+str(rain_amount)+' }'
             rainCount = 0
             print(message)
+            sendMqttMsg(message)
             oneMinStartTime = intervalTimeCheck
 
 
@@ -402,7 +442,3 @@ async def main():
     print("done")
 
 asyncio.run(main())
-
-
-
-s
